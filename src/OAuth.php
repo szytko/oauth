@@ -12,35 +12,35 @@
  
 namespace Vegas\Security;
 
+use OAuth\Common\Storage\Memory;
 use OAuth\Common\Storage\TokenStorageInterface;
 use Phalcon\DI\InjectionAwareInterface;
 use Phalcon\DiInterface;
 use Vegas\DI\InjectionAwareTrait;
 use Vegas\Security\OAuth\Exception\ServiceNotFoundException;
-use Vegas\Security\OAuth\Storage\Session;
 
 /**
  * Class OAuth
  *
  * @package Vegas\Security
  */
-class OAuth implements InjectionAwareInterface
+class OAuth
 {
-    use InjectionAwareTrait;
-
     /**
      * @var TokenStorageInterface
      */
-    protected $sessionStorage = null;
+    protected $tokenStorage = null;
 
     /**
-     * @param DiInterface $di
+     * @param \OAuth\Common\Storage\TokenStorageInterface $tokenStorage
      */
-    public function __construct(DiInterface $di)
+    public function __construct(TokenStorageInterface $tokenStorage = null)
     {
-        $this->setDI($di);
-
-        $this->sessionStorage = $this->getDefaultSessionStorage();
+        if ($tokenStorage !== null) {
+            $this->tokenStorage = $tokenStorage;
+        } else {
+            $this->tokenStorage = $this->getDefaultTokenStorage();
+        }
     }
 
     /**
@@ -53,7 +53,7 @@ class OAuth implements InjectionAwareInterface
         $adapterNamespace = __NAMESPACE__ . '\OAuth\Service\\' . ucfirst($adapterName);
         try {
             $reflectionClass = new \ReflectionClass($adapterNamespace);
-            $adapterInstance = $reflectionClass->newInstanceArgs(array($this->getDI(), $this->sessionStorage));
+            $adapterInstance = $reflectionClass->newInstanceArgs(array($this->tokenStorage));
 
             return $adapterInstance;
         } catch (\ReflectionException $ex) {
@@ -62,21 +62,35 @@ class OAuth implements InjectionAwareInterface
     }
 
     /**
-     * @param TokenStorageInterface $sessionStorage
+     * Sets token storage
+     *
+     * @param TokenStorageInterface $tokenStorage
      * @return $this
      */
-    public function setSessionStorage(TokenStorageInterface $sessionStorage)
+    public function setTokenStorage(TokenStorageInterface $tokenStorage)
     {
-        $this->sessionStorage = $sessionStorage;
+        $this->tokenStorage = $tokenStorage;
 
         return $this;
     }
 
     /**
-     * @return Session
+     * Returns token storage instance
+     *
+     * @return TokenStorageInterface
      */
-    public function getDefaultSessionStorage()
+    public function getTokenStorage()
     {
-        return new Session();
+        return $this->tokenStorage;
+    }
+
+    /**
+     * Returns default token storage instance
+     *
+     * @return TokenStorageInterface
+     */
+    public function getDefaultTokenStorage()
+    {
+        return new Memory();
     }
 }

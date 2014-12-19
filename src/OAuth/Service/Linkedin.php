@@ -117,8 +117,8 @@ class Linkedin extends ServiceAbstract
 
         $identity = new Identity($this->getServiceName(), $response['emailAddress']);
         $identity->id = $response['id'];
-        $identity->first_name = $response['firstName'];
-        $identity->last_name = $response['lastName'];
+        $identity->firstName = $response['firstName'];
+        $identity->lastName = $response['lastName'];
         $identity->picture = !isset($response['pictureUrl']) ? '' : $response['pictureUrl'];
         $identity->link = $response['publicProfileUrl'];
 

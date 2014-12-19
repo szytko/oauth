@@ -17,7 +17,7 @@ namespace Vegas\Security\OAuth;
  *
  * @package Vegas\Security\Authentication
  */
-class Identity 
+class Identity implements \JsonSerializable
 {
     /**
      * Identity values
@@ -42,7 +42,7 @@ class Identity
      */
     public function getEmail()
     {
-        return $this->email;
+        return $this->values['email'];
     }
 
     /**
@@ -50,7 +50,7 @@ class Identity
      */
     public function getService()
     {
-        return $this->service;
+        return $this->values['service'];
     }
 
     /**
@@ -87,18 +87,28 @@ class Identity
      *
      * @param $name
      * @param $args
+     * @throws \BadMethodCallException
      * @return null
      */
     public function __call($name, $args)
     {
-        if (strpos($name, 'get') !== -1) {
+        if (strpos($name, 'get') !== false) {
             $name = lcfirst(str_replace('get', '', $name));
-            if (!isset($this->values[$name])) return null;
+            if (!isset($this->values[$name])) {
+                return null;
+            }
 
             return $this->values[$name];
         }
 
-        return null;
+        if (strpos($name, 'set') !== false) {
+            $name = lcfirst(str_replace('set', '', $name));
+            $this->values[$name] = $args[0];
+
+            return $this;
+        }
+
+        throw new \BadMethodCallException($name);
     }
 
     /**
@@ -108,4 +118,24 @@ class Identity
     {
         return $this->values;
     }
-} 
+
+    /**
+     * @return string
+     */
+    public function __toString()
+    {
+        return $this->getEmail();
+    }
+
+    /**
+     * (PHP 5 &gt;= 5.4.0)<br/>
+     * Specify data which should be serialized to JSON
+     * @link http://php.net/manual/en/jsonserializable.jsonserialize.php
+     * @return mixed data which can be serialized by <b>json_encode</b>,
+     * which is a value of any type other than a resource.
+     */
+    public function jsonSerialize()
+    {
+        return $this->toArray();
+    }
+}

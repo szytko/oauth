@@ -138,7 +138,7 @@ class Oauth implements \Phalcon\DI\InjectionAwareInterface
             }
         } else {
             $service = $this->getService($serviceName);
-            $service->destroySession();
+            $service->gc();
         }
     }
 

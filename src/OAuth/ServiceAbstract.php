@@ -16,8 +16,6 @@ use OAuth\Common\Consumer\Credentials;
 use OAuth\Common\Http\Client\CurlClient;
 use OAuth\Common\Storage\Exception\TokenNotFoundException;
 use OAuth\Common\Storage\TokenStorageInterface;
-use Phalcon\DI\InjectionAwareInterface;
-use Phalcon\DiInterface;
 use Vegas\DI\InjectionAwareTrait;
 use Vegas\Security\OAuth\Exception\FailedAuthorizationException;
 use Vegas\Security\OAuth\Exception\InvalidApplicationKeyException;
@@ -28,10 +26,8 @@ use Vegas\Security\OAuth\Exception\ServiceNotInitializedException;
  * Class AdapterAbstract
  * @package Vegas\Security\OAuth
  */
-abstract class ServiceAbstract implements InjectionAwareInterface
+abstract class ServiceAbstract
 {
-    use InjectionAwareTrait;
-
     /**
      * URI helper
      *
@@ -40,11 +36,11 @@ abstract class ServiceAbstract implements InjectionAwareInterface
     protected $currentUri;
 
     /**
-     * Session storage instance
+     * Token storage instance
      *
-     * @var Storage\Session
+     * @var TokenStorageInterface
      */
-    protected $sessionStorage;
+    protected $tokenStorage;
 
     /**
      * Provided credentials
@@ -54,7 +50,7 @@ abstract class ServiceAbstract implements InjectionAwareInterface
     protected $credentials;
 
     /**
-     * List of added provider scope
+     * List of added providers scopes
      *
      * @var array
      */
@@ -67,29 +63,39 @@ abstract class ServiceAbstract implements InjectionAwareInterface
 
     /**
      * Creates URI factory for building urls
-     * Setups session storage
+     * Setups token storage
      *
-     * @param DiInterface $di
-     * @param TokenStorageInterface $sessionStorage
+     * @param TokenStorageInterface $tokenStorage
+     * @param array $credentials
+     * @param array $scopes
      */
-    public function __construct(DiInterface $di, TokenStorageInterface $sessionStorage)
+    public function __construct(TokenStorageInterface $tokenStorage, array $credentials, array $scopes = null)
     {
-        $this->setDI($di);
-
         $uriFactory = new \OAuth\Common\Http\Uri\UriFactory();
         $this->currentUri = $uriFactory->createFromSuperGlobalArray($_SERVER);
         $this->currentUri->setQuery('');
 
-        $this->sessionStorage = $sessionStorage;
+        //sets tokenStorage, credentials and scopes
+        $this->tokenStorage = $tokenStorage;
+        $this->setupCredentials($credentials);
+        if ($scopes === null) {
+            $this->setAllScopes();
+        } else {
+            $this->setScopes($scopes);
+        }
+
+        $this->service = $this->createService();
     }
 
     /**
-     * @param TokenStorageInterface $sessionStorage
+     * Sets token storage instance
+     *
+     * @param TokenStorageInterface $tokenStorage
      * @return $this
      */
-    public function setSessionStorage(TokenStorageInterface $sessionStorage)
+    public function setTokenStorage(TokenStorageInterface $tokenStorage)
     {
-        $this->sessionStorage = $sessionStorage;
+        $this->tokenStorage = $tokenStorage;
 
         return $this;
     }
@@ -101,7 +107,7 @@ abstract class ServiceAbstract implements InjectionAwareInterface
      */
     public function getAccessToken()
     {
-        return $this->sessionStorage->retrieveAccessToken($this->getServiceName());
+        return $this->tokenStorage->retrieveAccessToken($this->getServiceName());
     }
 
     /**
@@ -111,7 +117,7 @@ abstract class ServiceAbstract implements InjectionAwareInterface
      */
     public function getAuthorizationState()
     {
-        return $this->sessionStorage->retrieveAuthorizationState($this->getServiceName());
+        return $this->tokenStorage->retrieveAuthorizationState($this->getServiceName());
     }
 
     /**
@@ -122,6 +128,8 @@ abstract class ServiceAbstract implements InjectionAwareInterface
     abstract public function getServiceName();
 
     /**
+     * Returns identity object
+     *
      * @return mixed
      */
     abstract public function getIdentity();
@@ -129,19 +137,17 @@ abstract class ServiceAbstract implements InjectionAwareInterface
     /**
      * Authorization process
      *
-     * @throws \Vegas\Security\OAuth\Exception\FailedAuthorizationException
+     * @param $code
+     * @param $state
+     * @throws Exception\FailedAuthorizationException
      * @return \OAuth\Common\Http\Uri\UriInterface|string
      */
-    public function authorize()
+    public function authorize($code = null, $state = null)
     {
         $this->assertServiceInstance();
 
         try {
-            $request = $this->di->get('request');
-            $code = $request->getQuery('code', null);
             if (!is_null($code)) {
-                $state = $request->getQuery('state', null);
-
                 return $this->service->requestAccessToken($code, $state);
             }
         } catch (\OAuth\Common\Exception\Exception $ex) {
@@ -170,7 +176,7 @@ abstract class ServiceAbstract implements InjectionAwareInterface
         $this->credentials = new Credentials(
             $credentials['key'],
             $credentials['secret'],
-            $this->getCurrentUri()
+            $this->getCurrentAbsoluteUri()
         );
     }
 
@@ -179,13 +185,13 @@ abstract class ServiceAbstract implements InjectionAwareInterface
      *
      * @return string
      */
-    public function getCurrentUri()
+    public function getCurrentAbsoluteUri()
     {
         return $this->currentUri->getAbsoluteUri();
     }
 
     /**
-     * Sets all permissions, which user will be asked for during authentication process
+     * Sets all permissions, which user will be asked for during authorization process
      */
     public function setAllScopes()
     {
@@ -214,35 +220,24 @@ abstract class ServiceAbstract implements InjectionAwareInterface
     }
 
     /**
-     * Adds provider scope
-     *
-     * @param $scope
-     * @return $this
-     */
-    public function addScope($scope)
-    {
-        if (!in_array($scope, $this->scopes)) {
-            $this->scopes[] = $scope;
-        }
-
-        return $this;
-    }
-
-    /**
      * Initializes the OAuth service
-     * The service is created by \OAuth\ServiceFactory upon service name returned from getServiceName() method
+     * The service is created by \OAuth\ServiceFactory based upon
+     * service name returned from getServiceName() method
      *
      * @return $this
      */
-    public function init()
+    public function createService()
     {
         $serviceFactory = new \OAuth\ServiceFactory();
-        $serviceFactory->setHttpClient(new CurlClient());
-        $this->service = $serviceFactory->createService(
-            $this->getServiceName(), $this->credentials, $this->sessionStorage, $this->scopes
+        $serviceFactory->setHttpClient(new CurlClient());//set client
+        $service = $serviceFactory->createService(
+            $this->getServiceName(),
+            $this->credentials,
+            $this->tokenStorage,
+            $this->scopes
         );
 
-        return $this;
+        return $service;
     }
 
     /**
@@ -303,23 +298,25 @@ abstract class ServiceAbstract implements InjectionAwareInterface
     public function isAuthenticated()
     {
         try {
-            $session = $this->sessionStorage->retrieveAccessToken($this->getServiceName());
-            if (!$session) {
+            $token = $this->tokenStorage->retrieveAccessToken($this->getServiceName());
+            if (!$token) {
                 return false;
             }
-            return $session->getEndOfLife() > time();
+            return $token->getEndOfLife() > time();
         } catch (TokenNotFoundException $e) {
             return false;
         }
     }
 
     /**
+     * Cleans up
+     *
      * @return $this
      */
-    public function destroySession()
+    public function gc()
     {
-        $this->sessionStorage->clearToken($this->getServiceName());
-        $this->sessionStorage->clearAuthorizationState($this->getServiceName());
+        $this->tokenStorage->clearToken($this->getServiceName());
+        $this->tokenStorage->clearAuthorizationState($this->getServiceName());
 
         return $this;
     }

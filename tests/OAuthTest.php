@@ -10,7 +10,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Vegas\Tests\Security;
+namespace Vegas\Tests\Security\OAuth;
 
 use Phalcon\DI;
 use Vegas\DI\InjectionAwareTrait;
@@ -20,26 +20,52 @@ class OAuthTest extends \PHPUnit_Framework_TestCase
 {
     public function setUp()
     {
+        parent::setUp();
         $_SERVER['REQUEST_URI'] = '/login';
     }
 
-    public function testCreateAdapterByItsName()
+    public function testShouldCreateServiceByItsName()
     {
-        $di = DI::getDefault();
+        $oauth = new OAuth();
 
-        $oauth = new OAuth($di);
-
-        $this->assertInstanceOf('\Vegas\Security\OAuth\Service\Linkedin', $oauth->obtainServiceInstance('linkedin'));
-        $this->setExpectedException('\Vegas\Security\OAuth\Exception\ServiceNotFoundException');
-        $oauth->obtainServiceInstance('fake');
+        $this->assertInstanceOf(
+            '\Vegas\Security\OAuth\Service\Linkedin',
+            $oauth->obtainServiceInstance('linkedin')
+        );
     }
 
-    public function testCreateAdapterByItsClass()
+    public function testShouldThrowExceptionForInvalidServiceName()
     {
-        $di = DI::getDefault();
-        $oauth = new OAuth($di);
-        $linkedin = new \Vegas\Security\OAuth\Service\Linkedin($di, $oauth->getDefaultSessionStorage());
+        $oauth = new OAuth();
 
-        $this->assertInstanceOf('\Vegas\Security\OAuth\Service\Linkedin', $linkedin);
+        try {
+            $oauth->obtainServiceInstance('fake');
+
+            throw new \Exception();
+        } catch (\Exception $e) {
+            $this->assertInstanceOf('\Vegas\Security\OAuth\Exception\ServiceNotFoundException', $e);
+        }
+    }
+
+    public function testShouldReturnDefaultTokenStorage()
+    {
+        $oauth = new OAuth();
+
+        $this->assertInstanceOf('\OAuth\Common\Storage\Memory', $oauth->getDefaultTokenStorage());
+    }
+
+    public function testShouldChangeTokenStorage()
+    {
+        $oauth = new OAuth();
+        $oauth->setTokenStorage(new OAuth\Storage\Session());
+
+        $this->assertInstanceOf('\Vegas\Security\OAuth\Storage\Session', $oauth->getTokenStorage());
+    }
+
+    public function testShouldSetTokenStorageFromConstructor()
+    {
+        $oauth = new OAuth(new OAuth\Storage\Session());
+
+        $this->assertInstanceOf('\Vegas\Security\OAuth\Storage\Session', $oauth->getTokenStorage());
     }
 } 

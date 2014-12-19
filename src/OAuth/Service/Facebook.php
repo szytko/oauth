@@ -144,8 +144,8 @@ class Facebook extends ServiceAbstract
 
         $identity = new Identity($this->getServiceName(), $response['email']);
         $identity->id = $response['id'];
-        $identity->first_name = $response['first_name'];
-        $identity->last_name = $response['last_name'];
+        $identity->firstName = $response['first_name'];
+        $identity->lastName = $response['last_name'];
         $identity->picture = $response['picture']['data']['url'];
         $identity->link = $response['link'];
 

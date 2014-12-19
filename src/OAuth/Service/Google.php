@@ -130,8 +130,8 @@ class Google extends ServiceAbstract
 
         $identity = new Identity($this->getServiceName(), $response['email']);
         $identity->id = $response['id'];
-        $identity->first_name = $response['given_name'];
-        $identity->last_name = $response['family_name'];
+        $identity->firstName = $response['given_name'];
+        $identity->lastName = $response['family_name'];
         $identity->picture = $response['picture'];
         $identity->link = $response['link'];
 
