@@ -20,18 +20,23 @@ use Vegas\Security\OAuth\Exception\FailedAuthorizationException;
  */
 class OauthController extends \Vegas\Mvc\Controller\ControllerAbstract
 {
+    private $oAuthService;
+
+    public function initialize()
+    {
+        parent::initialize();
+
+        $this->oAuthService = $this->serviceManager->get('oauth:oauth');
+    }
+
     /**
      *
      */
     public function indexAction()
     {
-        //oauth
-        $oAuth = $this->serviceManager->getService('oauth:oauth');
-        $oAuth->initialize();
-
-        $this->view->linkedinUri = $oAuth->getAuthorizationUri('linkedin');
-        $this->view->facebookUri = $oAuth->getAuthorizationUri('facebook');
-        $this->view->googleUri = $oAuth->getAuthorizationUri('google');
+        $this->view->linkedinUri = $this->oAuthService->getAuthorizationUri('linkedin');
+        $this->view->facebookUri = $this->oAuthService->getAuthorizationUri('facebook');
+        $this->view->googleUri = $this->oAuthService->getAuthorizationUri('google');
     }
 
     /**
@@ -42,19 +47,12 @@ class OauthController extends \Vegas\Mvc\Controller\ControllerAbstract
         $this->view->disable();
 
         $serviceName = $this->dispatcher->getParam('service');
-        $oauth = $this->serviceManager->getService('oauth:oauth');
-        $oauth->initialize();
 
         try {
             //authorize given service
-            $oauth->authorize($serviceName);
+            $this->oAuthService->authorize($serviceName, $this->request->getQuery('code'), $this->request->getQuery('state'));
 
-            /**
-             * @var \Vegas\Security\OAuth\Identity $identity
-             */
-            $identity = $oauth->getIdentity($serviceName);
-            //now you can create session for oauth identity
-            //....
+            //
 
             return $this->response->redirect(array('for' => 'root'))->send();
         } catch(FailedAuthorizationException $ex) {
@@ -69,11 +67,7 @@ class OauthController extends \Vegas\Mvc\Controller\ControllerAbstract
     public function logoutAction()
     {
         $this->view->disable();
-
-        $oauth = $this->serviceManager->getService('oauth:oauth');
-        $oauth->initialize();
-
-        $oauth->logout();
+        $this->oAuthService->logout();
 
         return $this->response->redirect(array('for' => 'root'))->send();
     }

@@ -205,7 +205,7 @@ class Session implements TokenStorageInterface
 
         $states = $this->sessionScope->get(self::SESSION_STATE);
         if (array_key_exists($service, $states)) {
-            unset($states, $service);
+            unset($states[$service]);
         }
         $this->sessionScope->set(self::SESSION_STATE, $states);
 
