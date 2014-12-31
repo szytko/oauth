@@ -30,7 +30,7 @@ class OAuthTest extends \PHPUnit_Framework_TestCase
 
         $this->assertInstanceOf(
             '\Vegas\Security\OAuth\Service\Linkedin',
-            $oauth->obtainServiceInstance('linkedin')
+            $oauth->obtainServiceInstance('linkedin', ['key' => 1, 'secret' => 2])
         );
     }
 

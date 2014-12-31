@@ -45,15 +45,19 @@ class OAuth
 
     /**
      * @param $adapterName
-     * @return OAuth\ServiceAbstract
+     * @param array $credentials
+     * @param array $scopes
      * @throws OAuth\Exception\ServiceNotFoundException
+     * @return OAuth\ServiceAbstract
      */
-    public function obtainServiceInstance($adapterName)
+    public function obtainServiceInstance($adapterName, $credentials = [], $scopes = [])
     {
         $adapterNamespace = __NAMESPACE__ . '\OAuth\Service\\' . ucfirst($adapterName);
         try {
             $reflectionClass = new \ReflectionClass($adapterNamespace);
-            $adapterInstance = $reflectionClass->newInstanceArgs(array($this->tokenStorage));
+            $adapterInstance = $reflectionClass->newInstance(
+                $this->tokenStorage, $credentials, $scopes
+            );
 
             return $adapterInstance;
         } catch (\ReflectionException $ex) {

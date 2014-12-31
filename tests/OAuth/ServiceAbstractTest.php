@@ -12,6 +12,8 @@
 
 namespace Vegas\Tests\Security\OAuth;
 
+use Vegas\Security\OAuth\Service\Google;
+
 class ServiceAbstractTest extends \PHPUnit_Framework_TestCase
 {
 
@@ -33,8 +35,13 @@ class ServiceAbstractTest extends \PHPUnit_Framework_TestCase
             ->method('clearAuthorizationState')
             ->willReturnSelf();
 
-        $service = $this->getMockForAbstractClass('\Vegas\Security\OAuth\Service\Google');
+        $builder = $this->getMockBuilder('\Vegas\Security\OAuth\Service\Google')
+            ->setConstructorArgs([
+                $tokenStorage, ['key' => 1, 'secret' => 2], [Google::SCOPE_EMAIL]
+            ]);
 
+        $mock = $builder->getMock();
+        $mock->authorize();;
     }
 
 }
