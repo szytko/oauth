@@ -20,5 +20,13 @@ use Vegas\Security\OAuth\Exception as OAuthException;
  */
 class ServiceNotInitializedException extends OAuthException
 {
-    protected $message = 'Service has not been initialized';
+    protected $message = 'Service \'%s\' has not been initialized';
+
+    /**
+     * @param string $serviceName
+     */
+    public function __construct($serviceName)
+    {
+        $this->message = sprintf($this->message, $serviceName);
+    }
 } 

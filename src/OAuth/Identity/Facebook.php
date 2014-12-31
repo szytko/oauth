@@ -9,32 +9,49 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
- 
+
 namespace Vegas\Security\OAuth\Identity;
 
 use Vegas\Security\OAuth\Identity;
-use Vegas\Security\OAuth\ServiceAbstract;
+use Vegas\Security\OAuth\IdentityInterface;
+use Vegas\Security\OAuth\ServiceDecorator;
 
 /**
  * Class Facebook
  *
  * @see https://developer.linkedin.com/documents/authentication
  *
- * @package Vegas\Security\OAuth\Service
+ * @package Vegas\Security\OAuth\Identity
  */
-class Facebook implements \IdentityInterface
+class Facebook
 {
     /**
-     * Name of oAuth service
+     * @var ServiceDecorator
      */
-    const SERVICE_NAME = 'facebook';
+    protected $service;
+
+    /**
+     * @param ServiceDecorator $service
+     */
+    public function __construct(ServiceDecorator $service)
+    {
+        $this->service = $service;
+    }
+
+    /**
+     * @return string
+     */
+    public function getServiceName()
+    {
+        return 'facebook';
+    }
 
     /**
      * @return Identity
      */
     public function getIdentity()
     {
-        $response = $this->request('/me?fields=id,first_name,last_name,picture,link,email');
+        $response = $this->service->request('/me?fields=id,first_name,last_name,picture,link,email');
 
         $identity = new Identity($this->getServiceName(), $response['email']);
         $identity->id = $response['id'];

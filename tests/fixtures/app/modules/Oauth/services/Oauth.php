@@ -12,14 +12,11 @@
 
 namespace Oauth\Services;
 
-use User\Models\User;
-use User\Services\Exception\SignUpFailedException;
-use Vegas\Security\Authentication\Exception\IdentityNotFoundException;
-use Vegas\Security\Authentication\Identity as AuthIdentity;
-use Vegas\Security\OAuth\Exception\ServiceNotFoundException;
-use Vegas\Security\OAuth\Identity;
+use OAuth\Common\Http\Client\CurlClient;
 use Vegas\Security\OAuth\Identity as OAuthIdentity;
+use Vegas\Security\OAuth\Identity;
 use Vegas\Security\OAuth\ServiceAbstract;
+use Vegas\Security\OAuth\Storage\Session;
 
 /**
  * Class Oauth
@@ -32,14 +29,7 @@ class Oauth implements \Phalcon\DI\InjectionAwareInterface
     /**
      * @var array
      */
-    protected $config = array();
-
-    /**
-     * List of initializes services
-     *
-     * @var array
-     */
-    protected $oAuthServices = array();
+    protected $config = [];
 
     /**
      * @var \Vegas\Security\OAuth
@@ -69,19 +59,18 @@ class Oauth implements \Phalcon\DI\InjectionAwareInterface
      */
     protected function setupServices()
     {
-        $this->oAuth = new \Vegas\Security\OAuth($this->di);
+        $tokenStorage = new Session();
+        $httpClient = new CurlClient();
+
+        $this->oAuth = new \Vegas\Security\OAuth($tokenStorage, $httpClient);
         foreach ($this->config as $serviceName => $serviceConfig) {
-            $service = $this->oAuth->obtainServiceInstance($serviceName);
-            $service->setupCredentials(array(
-                'key'   =>  $serviceConfig['key'],
-                'secret'    =>  $serviceConfig['secret'],
-                'redirect_uri'  =>  $serviceConfig['redirect_uri']
-            ));
-            if (isset($serviceConfig['scopes'])) {
-                $service->setScopes($serviceConfig['scopes']);
-            }
-            $service->init();
-            $this->oAuthServices[$serviceName] = $service;
+            $this->oAuth->createService($serviceName, [
+                    'key'   =>  $serviceConfig['key'],
+                    'secret'    =>  $serviceConfig['secret'],
+                    'redirect_uri'  =>  $serviceConfig['redirect_uri']
+                ],
+                isset($serviceConfig['scopes']) ? $serviceConfig['scopes'] : []
+            );
         }
     }
 
@@ -94,11 +83,7 @@ class Oauth implements \Phalcon\DI\InjectionAwareInterface
      */
     public function getService($serviceName)
     {
-        if (!isset($this->oAuthServices[$serviceName])) {
-            throw new ServiceNotFoundException($serviceName);
-        }
-
-        return $this->oAuthServices[$serviceName];
+        return $this->oAuth->getService($serviceName);
     }
 
     /**
@@ -109,51 +94,35 @@ class Oauth implements \Phalcon\DI\InjectionAwareInterface
      */
     public function getAuthorizationUri($serviceName)
     {
-        $service = $this->getService($serviceName);
-        return $service->getAuthorizationUri();
+        return $this->getService($serviceName)->getAuthorizationUri();
     }
 
     /**
-     * Authorizes
+     * Authorizes indicated service
      *
      * @param $serviceName
+     * @param $code
+     * @param $state
      * @return \OAuth\Common\Http\Uri\UriInterface|string
      */
-    public function authorize($serviceName)
+    public function authorize($serviceName, $code, $state)
     {
-        $service = $this->getService($serviceName);
-        return $service->authorize();
+        return $this->getService($serviceName)->authorize($code, $state);
     }
 
     /**
-     * Remove session for indicated service
+     * Removes session for indicated service
      *
      * @param null $serviceName
      */
     public function logout($serviceName = null)
     {
         if (null == $serviceName) {
-            foreach ($this->oAuthServices as $serviceName => $service) {
-                $service->destroySession();
+            foreach ($this->oAuth->getServices() as $serviceName => $service) {
+                $service->gc();
             }
         } else {
-            $service = $this->getService($serviceName);
-            $service->gc();
+            $this->getService($serviceName)->gc();
         }
-    }
-
-    /**
-     * Returns identity with accessToken for indicated service
-     *
-     * @param $serviceName
-     * @return mixed
-     */
-    public function getIdentity($serviceName)
-    {
-        $service = $this->getService($serviceName);
-        $identity = $service->getIdentity();
-        $identity->accessToken = $service->getAccessToken();
-
-        return $identity;
     }
 }

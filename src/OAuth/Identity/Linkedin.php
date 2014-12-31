@@ -10,102 +10,39 @@
  * file that was distributed with this source code.
  */
  
-namespace Vegas\Security\OAuth\Service;
+namespace Vegas\Security\OAuth\Identity;
 
 use Vegas\Security\OAuth\Identity;
-use Vegas\Security\OAuth\ServiceAbstract;
+use Vegas\Security\OAuth\ServiceDecorator;
 
 /**
  * Class Linkedin
  *
  * @see https://developer.linkedin.com/documents/authentication
  *
- * @package Vegas\Security\OAuth\Service
+ * @package Vegas\Security\OAuth\Identity
  */
-class Linkedin extends ServiceAbstract
+class Linkedin
 {
     /**
-     * Name of oAuth service
+     * @var ServiceDecorator
      */
-    const SERVICE_NAME = 'linkedin';
+    protected $service;
 
     /**
-     * Your Profile Overview
-     * Name, photo, headline, and current positions
-     * GET /people/~
-     *  * see person field list
+     * @param ServiceDecorator $service
      */
-    const SCOPE_BASIC_PROFILE = 'r_basicprofile';
-
-    /**
-     * Your Full Profile
-     * Full profile including experience, education, skills, and recommendations
-     * GET /people/~
-     *  * see person field list
-     */
-    const SCOPE_FULL_PROFILE = 'r_fullprofile';
-
-    /**
-     * Your Email Address
-     * The primary email address you use for your LinkedIn account
-     * GET /people/~/email-address
-     */
-    const SCOPE_EMAIL_ADDRESS = 'r_emailaddress';
-
-    /**
-     * Your Connections
-     * Your 1st and 2nd degree connections
-     * GET /people/~
-     *  * see person field list
-     */
-    const SCOPE_NETWORK = 'r_network';
-
-    /**
-     * Your Contact Info
-     * Retrieve and post updates to LinkedIn as you
-     * GET /people/~/network/updates
-     * POST /people/~/shares
-     */
-    const SCOPE_CONTACT_INFO = 'r_contactinfo';
-
-    /**
-     * Network Updates
-     * Retrieve and post updates to LinkedIn as you
-     * GET /people/~/network/updates
-     * POST /people/~/shares
-     */
-    const SCOPE_NETWORK_UPDATES = 'rw_nus';
-
-    /**
-     * Company Page & Analytics
-     * Edit company pages for which I am an Admin and post status updates on behalf of those companies
-     * POST /companies/{id}/shares
-     * GET companies/{id}/company-statistics
-     */
-    const SCOPE_COMPANY_ADMIN = 'rw_company_admin';
-
-    /**
-     * Group Discussions
-     * Retrieve and post group discussions as you
-     * GET & POST /groups
-     * GET & POST /posts
-     * GET & POST /people/~/group-memberships
-     */
-    const SCOPE_GROUPS = 'rw_groups';
-
-    /**
-     * Invitations and Messages
-     * Send messages and invitations to connect as you
-     * POST /people/~/mailbox
-     */
-    const SCOPE_MESSAGES = 'w_messages';
+    public function __construct(ServiceDecorator $service)
+    {
+        $this->service = $service;
+    }
 
     /**
      * {@inheritdoc}
      */
     public function getServiceName()
     {
-        return self::SERVICE_NAME;
+        return 'linkedin';
     }
 
     /**
@@ -113,7 +50,7 @@ class Linkedin extends ServiceAbstract
      */
     public function getIdentity()
     {
-        $response = $this->request('/people/~:(id,first-name,last-name,email-address,picture-url,public-profile-url)?format=json');
+        $response = $this->service->request('/people/~:(id,first-name,last-name,email-address,picture-url,public-profile-url)?format=json');
 
         $identity = new Identity($this->getServiceName(), $response['emailAddress']);
         $identity->id = $response['id'];
